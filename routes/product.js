@@ -54,7 +54,7 @@ router.post('/', tokenMiddleware, async function(req, res, next){
 
         if (quantity <= 0 || productPrice < 0) {
             return res.status(400).send({
-                message: "Invalid quantity. Quantity cannot be less than 1",
+                message: "Create product cannot be less than 1",
                 successfully: false
             });
         }
@@ -94,6 +94,13 @@ router.put('/:id', tokenMiddleware, async function(req, res, next){
     try {
         let { productName, productDescri, productPrice, quantity } = req.body
         let { id } = req.params
+        
+        if (quantity <= 0 || productPrice < 0) {
+                return res.status(400).send({
+                    message: "Invalid quantity. Quantity cannot be less than 1",
+                    successfully: false
+                });
+            }
 
         let productUpdate = await productSchema.findByIdAndUpdate(id, {
             productName: productName,

@@ -64,13 +64,23 @@ router.post('/', tokenMiddleware, async function(req, res, next){
             }
         }
 
-        const counter = await Counter.findByIdAndUpdate(
+        // Check if any order
+        let orderCount = await orderSchema.countDocuments();
+        if (orderCount === 0) {
+            await Counter.findByIdAndUpdate(
+                'orderId',
+                { sequence_value: 0 },
+                { new: true, upsert: true }
+            );
+        }
+
+        let counter = await Counter.findByIdAndUpdate(
           'orderId',
           { $inc: { sequence_value: 1 } },
           { new: true, upsert: true }
         );
-        const orderSeq = counter.sequence_value;
-        const orderId = `ORD-${orderSeq}`;
+        let orderSeq = counter.sequence_value;
+        let orderId = `ORD-${orderSeq}`;
         
         let user = await userSchema.findOne({username: username});
         if (!user) {
@@ -149,6 +159,41 @@ router.post('/', tokenMiddleware, async function(req, res, next){
             successfully: true
         });
         
+    } catch (error) {
+        return res.status(500).send({
+            data: error,
+            message: 'Server error',
+            successfully: false
+        });
+    }
+});
+
+router.delete('/:id',  async function(req, res, next){
+    try {
+        let { id } = req.params;
+        let order = await orderSchema.findOne({ orderId: id });
+        if (!order){
+            return res.status(404).send({
+                data: order,
+                message: 'Order not found',
+                successfully: false
+            });
+        }
+
+        // Return product back to stock
+        for (let item of order.products){
+            await productSchema.findByIdAndUpdate(
+                item.productId,
+                { $inc: { quantity: item.quantity } }
+            );
+        }
+
+        await orderSchema.findOneAndDelete({ orderId: id });
+        return res.status(200).send({
+            message: 'Order deleted successfully',
+            successfully: true
+        });
+
     } catch (error) {
         return res.status(500).send({
             data: error,

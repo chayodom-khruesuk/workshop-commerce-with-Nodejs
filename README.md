@@ -28,27 +28,27 @@ npm start
 ```
 
 ### Step 5: Install basic library
-# The cors library is used to set access permissions from various services
+#### The cors library is used to set access permissions from various services
 ```bash
 npm i cors
 ```
 
-# The nodemon library is used to execute code at runtime when edited or saved
+#### The nodemon library is used to execute code at runtime when edited or saved
 ```bash
 npm i nodemon
 ```
 
-# mongoose library for mongoDB ODM
+#### mongoose library for mongoDB ODM
 ```bash
 npm i mongoose
 ```
 
-# Manage password storage
+#### Manage password storage
 ```bash
 npm i bcrypt
 ```
 
-# Generate and validate JSON Web Tokens (JWTs), Used in systems that require authentication and authorization
+#### Generate and validate JSON Web Tokens (JWTs), Used in systems that require authentication and authorization
 ```bash
 npm i jsonwebtoken
 ```

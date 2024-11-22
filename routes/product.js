@@ -48,10 +48,18 @@ router.get('/', async function(req, res, next) {
     }
 });
 
-router.post('/', tokenMiddleware, async function(req, res, next){
+router.post('/',  async function(req, res, next){
     try {
         let { productName, productDescri, productPrice, quantity } = req.body
 
+        let productAlredy = await productSchema.findOne({ productName: productName });
+        if (productAlredy) {
+            return res.status(400).send({
+                message: "Product already exists",
+                successfully: false
+            });
+        }
+        
         if (quantity <= 0 || productPrice < 0) {
             return res.status(400).send({
                 message: "Create product cannot be less than 1",
@@ -59,13 +67,23 @@ router.post('/', tokenMiddleware, async function(req, res, next){
             });
         }
 
+        let productCount = await productSchema.countDocuments();
+        if (productCount === 0) {
+            await Counter.findByIdAndUpdate(
+                'productId',
+                { sequence_value: 0 },
+                { new: true, upsert: true }
+            )
+        }
+
         const counter = await Counter.findByIdAndUpdate(
           'productId',
           { $inc: { sequence_value: 1 } },
           { new: true, upsert: true }
         );
-        const productId = counter.sequence_value;
-
+        let prodSeq = counter.sequence_value;
+        let productId = `PROD${prodSeq}`;
+        
         let newProduct = new productSchema({
             productId: productId,
             productName: productName,

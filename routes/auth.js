@@ -16,9 +16,9 @@ router.post('/login', async function (req, res, next) {
 
     try {
         let userFound = await userSchema
-            .findOne({ username: credentials.username })
-            .select('userId username password age gender');
-
+            .findOne({ username: credentials.username });
+        console.log(userFound.role);
+        
         if (!userFound) {
             return res.status(401).send({
                 success: false,
@@ -39,7 +39,11 @@ router.post('/login', async function (req, res, next) {
         }
 
         let token = jwt.sign(
-            { userId: userFound.userId, username: userFound.username },
+            { 
+                userId: userFound.userId, 
+                username: userFound.username, 
+                role: userFound.role 
+            },
             process.env.JWT_SECRET_KEY,
             { expiresIn: '24h' }
         );
@@ -49,7 +53,7 @@ router.post('/login', async function (req, res, next) {
             username: userFound.username,
             age: userFound.age,
             gender: userFound.gender,
-            createdAt: userFound.createdAt,
+            role: userFound.role,
             token: token
         };
 

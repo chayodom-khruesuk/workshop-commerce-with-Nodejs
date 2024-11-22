@@ -168,7 +168,7 @@ router.post('/', tokenMiddleware, async function(req, res, next){
     }
 });
 
-router.delete('/:id',  async function(req, res, next){
+router.delete('/:id', tokenMiddleware, async function(req, res, next){
     try {
         let { id } = req.params;
         let order = await orderSchema.findOne({ orderId: id });

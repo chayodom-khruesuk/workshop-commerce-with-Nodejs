@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const userSchema = new Schema({
-    userId: { type: Number, unique: true },
+    userId: { type: String, unique: true },
     username: {
         type: String,
         unique: true,
@@ -10,7 +10,8 @@ const userSchema = new Schema({
     },
     password: {type: String, reequired: true},
     age: {type: Number},
-    gender: {type: String}
+    gender: {type: String},
+    role: {type: String},
 }, {
     timestamps: true
 })

@@ -8,18 +8,20 @@ const authenticateJWT = (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
-        return res.status(403).json({ message: 'Access denied. No token provided.' });
+        return res.status(403).send({ message: 'Access denied. No token provided.' });
     }
 
     // Verify the token
     jwt.verify(token, secretKey, (err, decoded) => {
         if (err) {
-            return res.status(403).json({ message: 'Token is invalid or expired.' });
+            return res.status(403).send({ message: 'Token is invalid or expired.' });
         }
 
-
-        req.user = decoded;
-
+        req.user = {
+            userId: decoded.userId,
+            username: decoded.username,
+            role: decoded.role
+        };
         next();
     });
 };

@@ -5,9 +5,17 @@ const Counter = require('../model/counter_model');
 var tokenMiddleware = require('../middleware/token_middleware');
 const bcrypt = require('bcrypt');
 
-router.get('/', async function(req, res, next) {
+router.get('/', tokenMiddleware, async function(req, res, next) {
   try {
     let user = await userSchema.find();
+    console.log(req.user);
+    if (req.user.role !== 'admin') {
+      return res.status(403).send({
+        message: "Not permission",
+        successfully: false
+      });
+    }
+
     return res.status(200).send({
       data: user,
       message: "Get all user successfully",
@@ -28,7 +36,6 @@ router.get('/:id', async function(req, res, next) {
 
     if (!user) {
       return res.status(404).send({
-        data: null,
         message: "User not found",
         successfully: false
       });
@@ -50,19 +57,33 @@ router.get('/:id', async function(req, res, next) {
 
 router.post('/', async function(req, res, next){
   try {
+
+    let userCount = await userSchema.countDocuments();
+    if (userCount === 0) {
+        await Counter.findByIdAndUpdate(
+          'userId',
+          { sequence_value: 0 },
+          { new: true, upsert: true }
+      );
+    }
+    
     const counter = await Counter.findByIdAndUpdate(
       'userId',
       { $inc: { sequence_value: 1 } },
       { new: true, upsert: true }
     );
-    const userId = counter.sequence_value;
+    let userSeq = counter.sequence_value;
+    let userId = `ID-${userSeq}`;
 
-    let { username, password, age, gender } = req.body;
+    let { username, password, age, gender, role} = req.body;
+
+    if (!role) {
+      role = "user";
+    }
 
     const userAlready = await userSchema.findOne({ username: username});
     if (userAlready) {
       return res.status(400).send({
-        data: null,
         message: "Username already exists",
         successfully: false
       });
@@ -73,7 +94,8 @@ router.post('/', async function(req, res, next){
       username: username,
       password: await bcrypt.hash(password, 10),
       age: age,
-      gender: gender
+      gender: gender,
+      role: role || "user"
     });
 
     let user = await newUser.save();

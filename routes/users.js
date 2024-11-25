@@ -1,161 +1,171 @@
-var express = require('express');
-var router = express.Router();
-var userSchema = require('../model/user_model.js');
-const Counter = require('../model/counter_model');
-var tokenMiddleware = require('../middleware/token_middleware');
-const bcrypt = require('bcrypt');
+const express = require('express')
+const router = express.Router()
+const User = require('../model/user_model.js')
+const Counter = require('../model/counter_model')
+const tokenMiddleware = require('../middleware/token_middleware')
+const bcrypt = require('bcrypt')
 
-router.get('/', tokenMiddleware, async function(req, res, next) {
+// Get all users (admin only)
+router.get('/', tokenMiddleware, async (req, res) => {
   try {
-    let user = await userSchema.find();
-    console.log(req.user);
     if (req.user.role !== 'admin') {
-      return res.status(403).send({
-        message: "Not permission",
-        successfully: false
-      });
+      return res.status(403).json({
+        message: 'Not permission',
+        success: false
+      })
     }
 
-    return res.status(200).send({
-      data: user,
-      message: "Get all user successfully",
-      successfully: true
-    });
-  } catch (error) {
-    return res.status(500).send({
-      data: error,
-      message: "Server error",
-      successfully: false
+    const users = await User.find()
+    return res.status(200).json({
+      data: users,
+      message: 'Get all users successfully',
+      success: true
     })
-  } 
-});
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Server error',
+      success: false
+    })
+  }
+})
 
-router.get('/:id', async function(req, res, next) {
+// Get user by ID
+router.get('/:id', async (req, res) => {
   try {
-    let user = await userSchema.findById(req.params.id);
+    const user = await User.findById(req.params.id)
 
     if (!user) {
-      return res.status(404).send({
-        message: "User not found",
-        successfully: false
-      });
+      return res.status(404).json({
+        message: 'User not found',
+        success: false
+      })
     }
     
-    return res.status(200).send({
+    return res.status(200).json({
       data: user,
-      message: "Get user by Id successfully",
-      successfully: true
-    });
+      message: 'Get user by Id successfully',
+      success: true
+    })
   } catch (error) {
-    return res.status(500).send({
-      data: err,
-      message: "Server error",
-      successfully: false
-    });
-  }
-});
-
-router.post('/', async function(req, res, next){
-  try {
-
-    let userCount = await userSchema.countDocuments();
-    if (userCount === 0) {
-        await Counter.findByIdAndUpdate(
-          'userId',
-          { sequence_value: 0 },
-          { new: true, upsert: true }
-      );
-    }
-    
-    const counter = await Counter.findByIdAndUpdate(
-      'userId',
-      { $inc: { sequence_value: 1 } },
-      { new: true, upsert: true }
-    );
-    let userSeq = counter.sequence_value;
-    let userId = `ID-${userSeq}`;
-
-    let { username, password, age, gender, role} = req.body;
-
-    if (!role) {
-      role = "user";
-    }
-
-    const userAlready = await userSchema.findOne({ username: username});
-    if (userAlready) {
-      return res.status(400).send({
-        message: "Username already exists",
-        successfully: false
-      });
-    }
-
-    let newUser = new userSchema({
-      userId: userId,
-      username: username,
-      password: await bcrypt.hash(password, 10),
-      age: age,
-      gender: gender,
-      role: role || "user"
-    });
-
-    let user = await newUser.save();
-    return res.status(201).send({
-      data: user,
-      message: "Create user successfully",
-      successfully: true
-    });
-
-  } catch (error) {
-    return res.status(500).send({
+    return res.status(500).json({
       data: error,
-      message: "Create user failed",
-      successfully: false
-    });
-  }
-});
-
-router.put('/:id', tokenMiddleware, async function(req, res, next) {
-  try {
-    let  {password, age, gender} = req.body
-    let { id } = req.params
-
-    let userUpdate = await userSchema.findByIdAndUpdate(id, {
-      password: await bcrypt.hash(password, 10),
-      age: age,
-      gender: gender
-    }, {new: true});
-    
-    return res.status(200).send({
-      data: userUpdate,
-      message: "Update user successfully",
-      successfully: true
-    });
-
-  } catch (error) {
-    return res.status(500).send({
-      data: error,
-      message: "Update user failed",
-      successfully: false
-    });
-  }
-});
-
-router.delete('/:id', tokenMiddleware, async function(req, res, next){
-  try {
-    let { id } = req.params
-    let user = await userSchema.findByIdAndDelete(id);
-    return res.status(200).send({
-      data: user,
-      message: "Delete user successfully",
-      successfully: true
-    });
-  } catch (error) {
-    return res.status(500).send({
-      data: error,
-      message: "Delete user failed",
-      successfully: false
+      message: 'Server error',
+      success: false
     })
   }
-});
+})
 
-module.exports = router;
+// Create new user
+router.post('/', async (req, res) => {
+  try {
+    const { username, password, age, gender, role = 'user' } = req.body
+
+    const existingUser = await User.findOne({ username })
+    if (existingUser) {
+      return res.status(400).json({
+        message: 'Username already exists',
+        success: false
+      })
+    }
+
+    const userId = await generateUserId()
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const newUser = new User({
+      userId,
+      username,
+      password: hashedPassword,
+      age,
+      gender,
+      role
+    })
+
+    const savedUser = await newUser.save()
+    return res.status(201).json({
+      data: savedUser,
+      message: 'Create user successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Create user failed',
+      success: false
+    })
+  }
+})
+
+// Update user
+router.put('/:id', tokenMiddleware, async (req, res) => {
+  try {
+    const { password, age, gender } = req.body
+    const { id } = req.params
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      {
+        password: hashedPassword,
+        age,
+        gender
+      },
+      { new: true }
+    )
+    
+    return res.status(200).json({
+      data: updatedUser,
+      message: 'Update user successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Update user failed',
+      success: false
+    })
+  }
+})
+
+// Delete user
+router.delete('/:id', tokenMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params
+    const deletedUser = await User.findByIdAndDelete(id)
+    
+    return res.status(200).json({
+      data: deletedUser,
+      message: 'Delete user successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Delete user failed',
+      success: false
+    })
+  }
+})
+
+// Helper function
+async function generateUserId() {
+  const userCount = await User.countDocuments()
+  
+  if (userCount === 0) {
+    await Counter.findByIdAndUpdate(
+      'userId',
+      { sequence_value: 0 },
+      { new: true, upsert: true }
+    )
+  }
+
+  const counter = await Counter.findByIdAndUpdate(
+    'userId',
+    { $inc: { sequence_value: 1 } },
+    { new: true, upsert: true }
+  )
+  
+  return `ID-${counter.sequence_value}`
+}
+
+module.exports = router

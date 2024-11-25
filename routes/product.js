@@ -1,163 +1,179 @@
-var express = require('express');
-var router = express.Router();
-var productSchema = require('../model/product_model.js');
-var tokenMiddleware = require('../middleware/token_middleware');
-const Counter = require('../model/counter_model');
+const express = require('express')
+const router = express.Router()
+const Product = require('../model/product_model.js')
+const tokenMiddleware = require('../middleware/token_middleware')
+const Counter = require('../model/counter_model')
 
-router.get('/:id', async function(req, res, next) {
-    try {
-        let productId = await productSchema.findById(req.params.id);
-        
-        if (!productId) {
-            return res.status(404).send({
-                data: null,
-                message: "Product not found",
-                successfully: false
-            });
-        }
-
-        return res.status(200).send({
-            data: productId,
-            message: "Get product by ID successfully",
-            successfully: true
-        });
-
-    } catch (error) {
-        return res.status(500).send({
-            data: error,
-            message: "Server error",
-            successfully: false
-        });
+// Get product by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id)
+    
+    if (!product) {
+      return res.status(404).json({
+        data: null,
+        message: 'Product not found',
+        success: false
+      })
     }
-});
 
-router.get('/', async function(req, res, next) {
-    try {
-        let product = await productSchema.find();
-        return res.status(200).send({
-            data: product,
-            message: "Get all product successfully",
-            successfully: true
-        });
-    } catch (error) {
-        return res.status(500).send({
-            data: error,
-            message: "Server error",
-            successfully: false
-        });
+    return res.status(200).json({
+      data: product,
+      message: 'Get product by ID successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Server error',
+      success: false
+    })
+  }
+})
+
+// Get all products
+router.get('/', async (req, res) => {
+  try {
+    const products = await Product.find()
+    return res.status(200).json({
+      data: products,
+      message: 'Get all products successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Server error',
+      success: false
+    })
+  }
+})
+
+// Create new product
+router.post('/', async (req, res) => {
+  try {
+    const { productName, productDescri, productPrice, quantity } = req.body
+
+    if (!isValidProduct(productPrice, quantity)) {
+      return res.status(400).json({
+        message: 'Create product cannot be less than 1',
+        success: false
+      })
     }
-});
 
-router.post('/',  async function(req, res, next){
-    try {
-        let { productName, productDescri, productPrice, quantity } = req.body
-
-        let productAlredy = await productSchema.findOne({ productName: productName });
-        if (productAlredy) {
-            return res.status(400).send({
-                message: "Product already exists",
-                successfully: false
-            });
-        }
-        
-        if (quantity <= 0 || productPrice < 0) {
-            return res.status(400).send({
-                message: "Create product cannot be less than 1",
-                successfully: false
-            });
-        }
-
-        let productCount = await productSchema.countDocuments();
-        if (productCount === 0) {
-            await Counter.findByIdAndUpdate(
-                'productId',
-                { sequence_value: 0 },
-                { new: true, upsert: true }
-            )
-        }
-
-        const counter = await Counter.findByIdAndUpdate(
-          'productId',
-          { $inc: { sequence_value: 1 } },
-          { new: true, upsert: true }
-        );
-        let prodSeq = counter.sequence_value;
-        let productId = `PROD${prodSeq}`;
-        
-        let newProduct = new productSchema({
-            productId: productId,
-            productName: productName,
-            productDescri: productDescri,
-            productPrice: productPrice,
-            quantity: quantity
-        });
-
-        let product = await newProduct.save();
-        return res.status(201).send({
-            data: product,
-            message: "Create product successfully",
-            successfully: true
-        });
-    } catch (error) {
-        return res.status(500).send({
-            data: error,
-            message: "Create product failed",
-            successfully: false
-        });
+    const existingProduct = await Product.findOne({ productName })
+    if (existingProduct) {
+      return res.status(400).json({
+        message: 'Product already exists',
+        success: false
+      })
     }
-});
 
+    const productId = await generateProductId()
+    const newProduct = new Product({
+      productId,
+      productName,
+      productDescri,
+      productPrice,
+      quantity
+    })
 
-router.put('/:id', tokenMiddleware, async function(req, res, next){
-    try {
-        let { productName, productDescri, productPrice, quantity } = req.body
-        let { id } = req.params
-        
-        if (quantity <= 0 || productPrice < 0) {
-                return res.status(400).send({
-                    message: "Invalid quantity. Quantity cannot be less than 1",
-                    successfully: false
-                });
-            }
+    const savedProduct = await newProduct.save()
+    return res.status(201).json({
+      data: savedProduct,
+      message: 'Create product successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Create product failed',
+      success: false
+    })
+  }
+})
 
-        let productUpdate = await productSchema.findByIdAndUpdate(id, {
-            productName: productName,
-            productDescri: productDescri,
-            productPrice: productPrice,
-            quantity: quantity
-        }, {new: true});
+// Update product
+router.put('/:id', tokenMiddleware, async (req, res) => {
+  try {
+    const { productName, productDescri, productPrice, quantity } = req.body
+    const { id } = req.params
 
-        return res.status(200).send({
-            data: productUpdate,
-            message: "Update product successfully",
-            successfully: true
-        });
-
-    } catch (error) {
-        return res.status(500).send({
-            data: error,
-            message: "Update product failed",
-            successfully: false
-        });
+    if (!isValidProduct(productPrice, quantity)) {
+      return res.status(400).json({
+        message: 'Invalid quantity. Quantity cannot be less than 1',
+        success: false
+      })
     }
-});
 
-router.delete('/:id', tokenMiddleware, async function(req, res, next){
-    try {
-        let { id } =  req.params
-        let product = await productSchema.findByIdAndDelete(id);
-        return res.status(200).send({
-            data: product,
-            message: "Delete product successfully",
-            successfully: true  
-        });
-    } catch (error) {
-        return res.status(500).send({
-            data: error,
-            message: "Delete product failed",
-            successfully: false
-        })
-    }
-});
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      {
+        productName,
+        productDescri,
+        productPrice,
+        quantity
+      },
+      { new: true }
+    )
 
-module.exports = router;
+    return res.status(200).json({
+      data: updatedProduct,
+      message: 'Update product successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Update product failed',
+      success: false
+    })
+  }
+})
+
+// Delete product
+router.delete('/:id', tokenMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params
+    const deletedProduct = await Product.findByIdAndDelete(id)
+    
+    return res.status(200).json({
+      data: deletedProduct,
+      message: 'Delete product successfully',
+      success: true
+    })
+  } catch (error) {
+    return res.status(500).json({
+      data: error,
+      message: 'Delete product failed',
+      success: false
+    })
+  }
+})
+
+// Helper functions
+async function generateProductId() {
+  const productCount = await Product.countDocuments()
+  
+  if (productCount === 0) {
+    await Counter.findByIdAndUpdate(
+      'productId',
+      { sequence_value: 0 },
+      { new: true, upsert: true }
+    )
+  }
+
+  const counter = await Counter.findByIdAndUpdate(
+    'productId',
+    { $inc: { sequence_value: 1 } },
+    { new: true, upsert: true }
+  )
+  
+  return `PROD${counter.sequence_value}`
+}
+
+function isValidProduct(price, quantity) {
+  return quantity > 0 && price >= 0
+}
+
+module.exports = router

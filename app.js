@@ -12,11 +12,15 @@ var usersRouter = require('./routes/users');
 var productRouter = require('./routes/product');
 var orderRouter = require('./routes/order');
 var authRouter = require('./routes/auth');
+var categoryRouter = require('./routes/category');
 
 const req = require('express/lib/request');
 
 var app = express();
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:8080",
+  credentials: true,
+}));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -33,6 +37,7 @@ app.use('/users', usersRouter);
 app.use('/product', productRouter);
 app.use('/order', orderRouter);
 app.use('/auth', authRouter);
+app.use('/category', categoryRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

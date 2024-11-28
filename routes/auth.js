@@ -24,6 +24,8 @@ router.post('/login', async (req, res) => {
     }
 
     const token = generateToken(user)
+    res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'strict', maxAge: 24 * 60 * 60 * 1000 })
+    
     const userData = formatUserData(user, token)
 
     return res.status(200).json({
@@ -56,7 +58,7 @@ function generateToken(user) {
     },
     process.env.JWT_SECRET_KEY,
     { expiresIn: '24h' }
-  )
+  );
 }
 
 function formatUserData(user, token) {

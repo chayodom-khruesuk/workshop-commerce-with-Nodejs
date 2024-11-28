@@ -5,7 +5,7 @@ dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY
 
 const authenticateJWT = (req, res, next) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.cookies.token;
 
     if (!token) {
         return res.status(403).send({ message: 'Access denied. No token provided.' });

@@ -59,7 +59,7 @@ router.get('/:id', async (req, res) => {
 // Create new user
 router.post('/', async (req, res) => {
   try {
-    const { username, password, age, gender, role = 'user' } = req.body
+    const { username, password, email, age, gender, role = 'user' } = req.body
 
     const existingUser = await User.findOne({ username })
     if (existingUser) {
@@ -76,6 +76,7 @@ router.post('/', async (req, res) => {
       userId,
       username,
       password: hashedPassword,
+      email,
       age,
       gender,
       role
@@ -99,7 +100,7 @@ router.post('/', async (req, res) => {
 // Update user
 router.put('/:id', tokenMiddleware, async (req, res) => {
   try {
-    const { password, age, gender } = req.body
+    const { password, age, gender, email} = req.body
     const { id } = req.params
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -108,7 +109,8 @@ router.put('/:id', tokenMiddleware, async (req, res) => {
       {
         password: hashedPassword,
         age,
-        gender
+        gender,
+        email
       },
       { new: true }
     )

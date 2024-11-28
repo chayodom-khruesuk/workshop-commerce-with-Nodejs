@@ -52,60 +52,47 @@ router.get('/', async (req, res) => {
 })
 
 // Create new order
-router.post('/', tokenMiddleware, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { username, products } = req.body
+    console.log('Request body:', req.body);
+    
+    // Match the exact structure from Carts.vue
+    const items = req.body;
+    const orderId = await generateOrderId();
 
-    if (!validateProducts(products)) {
-      return res.status(400).json({
-        message: 'Order quantity must be at least 1',
-        success: false
-      })
-    }
-
-    const orderId = await generateOrderId()
-    const user = await User.findOne({ username })
-
-    if (!user) {
-      return res.status(404).json({
-        message: 'User not found',
-        success: false
-      })
-    }
-
-    const { orderProducts, totalQuantity, outOfStock } = await processOrderProducts(products)
-
-    if (outOfStock.length > 0) {
-      return res.status(400).json({
-        data: outOfStock,
-        message: 'Out of stock',
-        error: outOfStock
-      })
-    }
+    // Calculate total from items directly
+    const totalAmount = items.products.reduce((total, item) => {
+      return total + (item.productPrice * item.quantity);
+    }, 0);
 
     const order = new Order({
       orderId,
-      username,
-      products: orderProducts,
-      totalQuantity
-    })
+      username: items.username,
+      products: items.products,
+      totalAmount
+    });
 
-    const savedOrder = await order.save()
-    await updateProductStock(orderProducts)
+    const savedOrder = await order.save();
 
     return res.status(201).json({
       data: savedOrder,
       message: 'Order created successfully',
       success: true
-    })
+    });
+
   } catch (error) {
+    console.error('Order creation error:', error);
     return res.status(500).json({
       data: error,
       message: 'Server error',
       success: false
-    })
+    });
   }
-})
+});
+
+
+
+
 
 // Delete order
 router.delete('/:id', tokenMiddleware, async (req, res) => {

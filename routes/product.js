@@ -50,21 +50,36 @@ router.get('/', async (req, res) => {
 })
 
 // Create new product
-router.post('/', async (req, res) => {
+router.post('/', tokenMiddleware, async (req, res) => {
   try {
-    const { productName, productDescri, productPrice, quantity } = req.body
+    const {
+      productName,
+      productDescri,
+      shortDescription,
+      productPrice,
+      // category,
+      mainImage,
+      galleryImages,
+      specifications,
+      quantity
+    } = req.body
 
     if (!isValidProduct(productPrice, quantity)) {
       return res.status(400).json({
-        message: 'Create product cannot be less than 1',
+        message: 'Invalid price or quantity values',
         success: false
       })
     }
 
-    const existingProduct = await Product.findOne({ productName })
+    const existingProduct = await Product.findOne({ 
+      $or: [
+        { productName },
+      ]
+    })
+    
     if (existingProduct) {
       return res.status(400).json({
-        message: 'Product already exists',
+        message: 'Product name or SKU already exists',
         success: false
       })
     }
@@ -74,7 +89,12 @@ router.post('/', async (req, res) => {
       productId,
       productName,
       productDescri,
+      shortDescription,
       productPrice,
+      // category,
+      mainImage,
+      galleryImages,
+      specifications,
       quantity
     })
 
@@ -93,15 +113,25 @@ router.post('/', async (req, res) => {
   }
 })
 
-// Update product
-router.put('/:id', tokenMiddleware, async (req, res) => {
+// Update Product
+router.put('/update/:id', tokenMiddleware, async (req, res) => {
   try {
-    const { productName, productDescri, productPrice, quantity } = req.body
+    const {
+      productName,
+      productDescri,
+      shortDescription,
+      productPrice,
+      // category,
+      mainImage,
+      galleryImages,
+      specifications,
+      quantity
+    } = req.body
     const { id } = req.params
 
     if (!isValidProduct(productPrice, quantity)) {
       return res.status(400).json({
-        message: 'Invalid quantity. Quantity cannot be less than 1',
+        message: 'Invalid price or quantity values',
         success: false
       })
     }
@@ -111,7 +141,12 @@ router.put('/:id', tokenMiddleware, async (req, res) => {
       {
         productName,
         productDescri,
+        shortDescription,
         productPrice,
+        // category,
+        mainImage,
+        galleryImages,
+        specifications,
         quantity
       },
       { new: true }

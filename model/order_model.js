@@ -8,9 +8,11 @@ const orderSchema = new Schema({
         productId: {type: Schema.Types.ObjectId, ref: 'Product'},
         productName: {type: String},
         quantity: {type: Number},
-        productPrice: {type: Number}
+        productPrice: {type: Number},
+        mainImage: {type: String}
     }],
-    totalQuantity: {type: Number, required: true}
+    totalAmount: {type: Number, required: true},
+    orderDate: {type: Date, default: Date.now}
 }, {
     timestamps: true
 })
